@@ -1,6 +1,5 @@
 import zio._
 import zio.interop.catz._
-import skunk.{Session, Strategy}
 import skunk.codec.all._
 import skunk._
 import skunk.implicits._
