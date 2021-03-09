@@ -38,19 +38,33 @@ object Main extends App {
   }
 
   override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = {
-    (for {
-      // Will be used in "Arrange" and "Assert" phases
+    val worksCorrectlyWithoutZLayer = (for {
+      str <- mkSessionPool().use { sessionPool =>
+        sessionPool.use { session =>
+          session.prepare(sql"""SELECT 'abc'""".query(text)).use { pq =>
+            pq.unique(Void)
+          }
+        }
+      }
+      _ <- Task.effect(println(s"Selected str=$str from the database"))
+    } yield ()).exitCode
+
+    val failsWithZLayer = (for {
       zSessionPool <-
         ZIO
           .access[Has[ZSessionPool]](_.get)
           .provideLayer(live)
 
-      // Arrange
-      _ <- zSessionPool.use { session =>
-        session.prepare(sql"""SELECT 'abc'""".query(varchar)).use { pq =>
+      str <- zSessionPool.use { session =>
+        session.prepare(sql"""SELECT 'abc'""".query(text)).use { pq =>
           pq.unique(Void)
         }
       }
+      _ <- Task.effect(println(s"Selected str=$str from the database"))
     } yield ()).exitCode
+
+    // Uncomment this and comment `failsWithZLayer` below and you'd find that it works
+//    worksCorrectlyWithoutZLayer
+    failsWithZLayer
   }
 }
